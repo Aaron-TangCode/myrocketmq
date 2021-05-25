@@ -68,6 +68,13 @@ public class NamesrvStartup {
         return null;
     }
 
+    /**
+     * 创建监听、处理broker和处理客户端请求的组件
+     * @param args
+     * @return
+     * @throws IOException
+     * @throws JoranException
+     */
     public static NamesrvController createNamesrvController(String[] args) throws IOException, JoranException {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
         //PackageConflictDetect.detectFastjson();
@@ -123,6 +130,7 @@ public class NamesrvStartup {
         MixAll.printObjectProperties(log, namesrvConfig);
         MixAll.printObjectProperties(log, nettyServerConfig);
 
+        // 把namesrvConfig和nettyServerConfig两个配置，装载到NamesrvController中
         final NamesrvController controller = new NamesrvController(namesrvConfig, nettyServerConfig);
 
         // remember all configs to prevent discard
@@ -136,13 +144,14 @@ public class NamesrvStartup {
         if (null == controller) {
             throw new IllegalArgumentException("NamesrvController is null");
         }
-
+        //初始化组件
         boolean initResult = controller.initialize();
         if (!initResult) {
+            //初始化失败，关闭组件
             controller.shutdown();
             System.exit(-3);
         }
-
+        //JVM 关闭时候的钩子方法 --> JVM 关闭时，会回调这个方法
         Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, new Callable<Void>() {
             @Override
             public Void call() throws Exception {
@@ -150,7 +159,7 @@ public class NamesrvStartup {
                 return null;
             }
         }));
-
+        //
         controller.start();
 
         return controller;
