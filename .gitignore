@@ -1,7 +1,7 @@
 *dependency-reduced-pom.xml
 .classpath
 .project
-.settings/
+/.settings/
 */target/
 devenv
 *.log*
