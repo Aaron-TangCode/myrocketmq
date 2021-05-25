@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## Apache RocketMQ 
 [![Build Status](https://travis-ci.org/apache/rocketmq.svg?branch=master)](https://travis-ci.org/apache/rocketmq) [![Coverage Status](https://coveralls.io/repos/github/apache/rocketmq/badge.svg?branch=master)](https://coveralls.io/github/apache/rocketmq?branch=master)
 [![CodeCov](https://codecov.io/gh/apache/rocketmq/branch/master/graph/badge.svg)](https://codecov.io/gh/apache/rocketmq)
@@ -78,3 +79,6 @@ The following provides more details on the included cryptographic software:
 This software uses Apache Commons Crypto (https://commons.apache.org/proper/commons-crypto/) to
 support authentication, and encryption and decryption of data sent across the network between
 services.
+=======
+# myrocketmq
+>>>>>>> 342e58649ff80f2575525765702007d9179ef10e
