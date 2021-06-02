@@ -82,7 +82,7 @@ public class NamesrvController {
         // 网络服务器组件线程池
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
-
+        // 处理网络请求
         this.registerProcessor();
         //开启定时任务-->scanNotActiveBroker--> 猜想应该是扫描没心跳的Broker -> 10s
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
@@ -143,12 +143,13 @@ public class NamesrvController {
     }
     //把线程池给netty服务器
     private void registerProcessor() {
+        //处理测试集群的请求
         if (namesrvConfig.isClusterTest()) {
 
             this.remotingServer.registerDefaultProcessor(new ClusterTestRequestProcessor(this, namesrvConfig.getProductEnvName()),
                 this.remotingExecutor);
         } else {
-
+            // 处理普通请求
             this.remotingServer.registerDefaultProcessor(new DefaultRequestProcessor(this), this.remotingExecutor);
         }
     }
