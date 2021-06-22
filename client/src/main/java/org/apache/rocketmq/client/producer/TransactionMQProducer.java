@@ -16,11 +16,12 @@
  */
 package org.apache.rocketmq.client.producer;
 
-import java.util.concurrent.ExecutorService;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.protocol.NamespaceUtil;
 import org.apache.rocketmq.remoting.RPCHook;
+
+import java.util.concurrent.ExecutorService;
 
 public class TransactionMQProducer extends DefaultMQProducer {
     private TransactionCheckListener transactionCheckListener;
@@ -80,6 +81,7 @@ public class TransactionMQProducer extends DefaultMQProducer {
         }
 
         msg.setTopic(NamespaceUtil.wrapNamespace(this.getNamespace(), msg.getTopic()));
+
         return this.defaultMQProducerImpl.sendMessageInTransaction(msg, tranExecuter, arg);
     }
 
@@ -91,6 +93,7 @@ public class TransactionMQProducer extends DefaultMQProducer {
         }
 
         msg.setTopic(NamespaceUtil.wrapNamespace(this.getNamespace(), msg.getTopic()));
+        //默认调用DefaultMQProducer#sendMessageInTransaction
         return this.defaultMQProducerImpl.sendMessageInTransaction(msg, null, arg);
     }
 

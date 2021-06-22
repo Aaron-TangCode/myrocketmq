@@ -68,6 +68,7 @@ public class Broker2Client {
             RemotingCommand.createRequestCommand(RequestCode.CHECK_TRANSACTION_STATE, requestHeader);
         request.setBody(MessageDecoder.encode(messageExt, false));
         try {
+            //通过netty来发送消息
             this.brokerController.getRemotingServer().invokeOneway(channel, request, 10);
         } catch (Exception e) {
             log.error("Check transaction failed because invoke producer exception. group={}, msgId={}, error={}",
