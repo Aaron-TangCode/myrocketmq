@@ -48,10 +48,13 @@ public class TransactionalMessageCheckService extends ServiceThread {
 
     @Override
     protected void onWaitEnd() {
+        //timeout是从broker配置文件中获取transactionTimeOut值，代表事务的过期时间，(一个消息的存储时间 + timeout) > 系统当前时间，才会对该消息执行事务状态会查
         long timeout = brokerController.getBrokerConfig().getTransactionTimeOut();
+        //checkMax是从broker配置文件中获取transactionCheckMax值，代表事务的最大检测次数，如果超过检测次数，消息会默认为丢弃，即rollback消息
         int checkMax = brokerController.getBrokerConfig().getTransactionCheckMax();
         long begin = System.currentTimeMillis();
         log.info("Begin to check prepare message, begin time:{}", begin);
+        //回查：核心点org.apache.rocketmq.broker.transaction.queue.TransactionalMessageServiceImpl.check
         this.brokerController.getTransactionalMessageService().check(timeout, checkMax, this.brokerController.getTransactionalMessageCheckListener());
         log.info("End to check prepare message, consumed time:{}", System.currentTimeMillis() - begin);
     }
