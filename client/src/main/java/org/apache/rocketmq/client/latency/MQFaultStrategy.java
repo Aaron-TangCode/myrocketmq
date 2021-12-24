@@ -56,6 +56,7 @@ public class MQFaultStrategy {
     }
 
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
+        // 默认为false，代表不启用broker故障延迟
         if (this.sendLatencyFaultEnable) {
             try {
                 //轮询，负载均衡。比如有3个queue,第一次发送到queue1,第二次发送到queue2
@@ -66,11 +67,13 @@ public class MQFaultStrategy {
                         pos = 0;
                     //选队列
                     MessageQueue mq = tpInfo.getMessageQueueList().get(pos);
+                    // 看找到的这个queue所属的broker是不是可用的。可用的话，就返回queue，不可用就跳过，继续找下一个
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName()))
                         return mq;
                 }
-
+                // 如果所有队列都不可用，那么选择一个相对好的broker，不考虑可用性的消息队列
                 final String notBestBroker = latencyFaultTolerance.pickOneAtLeast();
+                //根据broker获取队列数
                 int writeQueueNums = tpInfo.getQueueIdByBroker(notBestBroker);
                 if (writeQueueNums > 0) {
                     final MessageQueue mq = tpInfo.selectOneMessageQueue();
@@ -86,9 +89,10 @@ public class MQFaultStrategy {
                 log.error("Error occurred when selecting message queue", e);
             }
 
+            // 随机选择一个queue
             return tpInfo.selectOneMessageQueue();
         }
-
+        // 当sendLatencyFaultEnable为false时，选择的方法selectOneMessageQueue
         return tpInfo.selectOneMessageQueue(lastBrokerName);
     }
 
@@ -99,6 +103,13 @@ public class MQFaultStrategy {
         }
     }
 
+    /**
+     * RocketMQ为每个Broker预测了个可用时间(当前时间+notAvailableDuration)，
+     * 当当前时间大于该时间，才代表Broker可用，而notAvailableDuration有6个级
+     * 别和latencyMax的区间一一对应，根据传入的currentLatency去预测该Broker在什么时候可用。
+     * @param currentLatency
+     * @return
+     */
     private long computeNotAvailableDuration(final long currentLatency) {
         for (int i = latencyMax.length - 1; i >= 0; i--) {
             if (currentLatency >= latencyMax[i])

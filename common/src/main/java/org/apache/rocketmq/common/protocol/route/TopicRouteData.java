@@ -20,10 +20,11 @@
  */
 package org.apache.rocketmq.common.protocol.route;
 
+import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
 public class TopicRouteData extends RemotingSerializable {
     private String orderTopicConf;
@@ -32,9 +33,11 @@ public class TopicRouteData extends RemotingSerializable {
     private HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
     public TopicRouteData cloneTopicRouteData() {
+        //从这里可以看出,根据topic来获取队列和broker、topicConf的配置
         TopicRouteData topicRouteData = new TopicRouteData();
         topicRouteData.setQueueDatas(new ArrayList<QueueData>());
         topicRouteData.setBrokerDatas(new ArrayList<BrokerData>());
+        //FilterServerTable 就是记录了broker的地址和broker所在的服务器
         topicRouteData.setFilterServerTable(new HashMap<String, List<String>>());
         topicRouteData.setOrderTopicConf(this.orderTopicConf);
 
