@@ -73,6 +73,8 @@ public class NamesrvStartup {
 
     /**
      * 创建监听、处理broker和处理客户端请求的组件
+     * 组装NameServer业务参数和组装NameServer网络参数
+     * 进而组装为NameServerController
      * @param args
      * @return
      * @throws IOException
@@ -89,8 +91,8 @@ public class NamesrvStartup {
             return null;
         }
         //核心配置
-        final NamesrvConfig namesrvConfig = new NamesrvConfig();
-        final NettyServerConfig nettyServerConfig = new NettyServerConfig();
+        final NamesrvConfig namesrvConfig = new NamesrvConfig();//NameServer业务参数
+        final NettyServerConfig nettyServerConfig = new NettyServerConfig();//NameServer网络参数
 
         nettyServerConfig.setListenPort(9876);
         // -c 文件的全路径名 读取里面的配置信息

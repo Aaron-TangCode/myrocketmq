@@ -59,10 +59,50 @@
 
   - 消息重试机制：消息重试是指消息被消费时，如果发生异常，RocketMQ支持消息重新投递。
 
-    ​
+    
 
 ## NameServer
 
 - NameServer之间互不通信
 - 不追求强一致性，追求最终一致性
 - 功能：管理topic路由信息
+
+##### 架构设计图
+
+![image-20211229100953191](/Users/aaron/Library/Application Support/typora-user-images/image-20211229100953191.png)
+
+
+
+##### 如果某一台消息服务器宕机了，生产者如何在不重启服务的情况下感知呢？
+
+
+
+##### 消息生产者如何知道消息要发送到哪台服务器？
+
+> Broker消息服务器在启动时会向NameServer注册，消息生产者在发送消息之前先从NameServer获取Broker服务器的地址列表，然后根据负载算法从列表中选择一台消息服务器发送消息
+
+
+
+##### NameServer和Broker的心跳
+
+> NameServer和每台Broker服务器保持长连接，并间隔10s检测Broker是否存活。如果检测到Broker宕机，没心跳了，就会把broker从路由注册表移除。但是路由不会立马通知消息生产者，为什么要这样子设计呢？为了降低NameServer的实现复杂度。因此需要在消息发送端提供容错机制来保证消息发送的高可用。Broker发送心跳包时，包含自身创建的topic路由等信息
+
+
+
+##### NameServer根据什么来判定Broker宕机？
+
+> 如果120s内，Broker都没心跳响应，就会被NameServer判定为宕机。
+>
+> 这里特别强调一下：NameServer是每10s检测心跳，而Broker是每30s发送一次心跳给NameServer
+
+
+
+##### 消息客户端和NameServer是如何交互的？
+
+> 消息客户端会每隔30s，从NameServer中获取路由信息
+
+
+
+##### 如果保证NameServer的高可用？
+
+> 部署多台NameServer即可，NameServer之间互不通信，会造成短时间内，NameServer的数据不一致，但无关重要，无非就是造成消息短暂的发送不均衡。
