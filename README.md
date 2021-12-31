@@ -106,3 +106,37 @@
 ##### 如果保证NameServer的高可用？
 
 > 部署多台NameServer即可，NameServer之间互不通信，会造成短时间内，NameServer的数据不一致，但无关重要，无非就是造成消息短暂的发送不均衡。
+
+
+
+##### NameServer路由注册、故障剔除
+
+> NameServer的主要作用是为了消息生产者和消息消费者提供topic的路由信息，以及管理broker节点，包括路由注册和路由发现、路由剔除
+
+##### 小技巧
+
+- 在启动NameServer时，可以先使用./mqnameserver -c configFile -p 命令打印当前加载的配置属性
+
+##### NameServer-路由元信息
+
+```java
+private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;//topicQueueTable:topic消息队列的路由信息，消息发送时根据路由表进行负载均衡
+    private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;//brokerAddrTable:broker基础信息，包含brokername，所属集群名称，主备Broker地址
+    private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;//clusterAddrTable:broker集群信息，存储集群中所有broker的名称
+    private final HashMap<String/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;//brokerLiveTable：broker状态信息，nameserver每次收到心跳包时，会替换该信息
+    private final HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;//filterServerTable:Broker上的FilterServer列表，用于类模式消息过滤。类模式过滤机制在4.4及以后版本被废弃
+
+```
+
+**总结**
+
+```java
+/**
+ * 一个集群有多个Broker
+ * 一个Broker有多个主题topic
+ * 相同主题的不同topic可以在不同的broker内？？？待确定
+ * 一个topic默认有4个写队列和4个读队列
+ * brokername相同的组成主从架构，brokerid=0,表示主，brokerid>0表示从节点
+ */
+```
+
