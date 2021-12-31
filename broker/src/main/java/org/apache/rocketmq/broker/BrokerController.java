@@ -860,7 +860,7 @@ public class BrokerController {
             handleSlaveSynchronize(messageStoreConfig.getBrokerRole());
             this.registerBrokerAll(true, false, true);
         }
-        //定期注册所有Broker；强制注册
+        //broker发送心跳包，向所有nameserver注册
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -870,7 +870,7 @@ public class BrokerController {
                 } catch (Throwable e) {
                     log.error("registerBrokerAll Exception", e);
                 }
-            }
+            }//brokerConfig.getRegisterNameServerPeriod()==30*1000
         }, 1000 * 10, Math.max(10000, Math.min(brokerConfig.getRegisterNameServerPeriod(), 60000)), TimeUnit.MILLISECONDS);
 
         if (this.brokerStatsManager != null) {
