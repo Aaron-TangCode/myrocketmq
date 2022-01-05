@@ -115,8 +115,11 @@ public class RouteInfoManager {
         RegisterBrokerResult result = new RegisterBrokerResult();
         try {
             try {
-                // 加写锁
+                // 加写锁: 允许多个消息发送者并发读操作，保证消息的高并发。同一时刻nameserver只能处理一个Broker的心跳包，多个心跳包请求串行执行
                 this.lock.writeLock().lockInterruptibly();
+
+                // clusterAddrTable的维护
+                // 第一步：路由注册需要加写锁，防止并发修改RouteInfoManager中的路由表。首先判断Broker所属集群是否存在，如果不存在，则创建集群，然后将broker名加入集群Broker集合
                 // 集群：key:集群  value:broker集合
                 Set<String> brokerNames = this.clusterAddrTable.get(clusterName);
                 if (null == brokerNames) {
@@ -125,7 +128,9 @@ public class RouteInfoManager {
                 }
                 brokerNames.add(brokerName);
 
-                boolean registerFirst = false;
+                // 第二步：：维护BrokerData信息，首先从brokerAddrTable中根据broker名尝试获取Broker信息，如果不存在，则新建BrokerData并放入brokerAddrTable，registerFirst设置为true；如果存在，直接替换原先的Broker信息，registerFirst设置为false，表示非第一次注册
+                // brokerAddrTable的维护
+                boolean registerFirst = false;//是否第一次注册
                 // broker
                 BrokerData brokerData = this.brokerAddrTable.get(brokerName);
                 if (null == brokerData) {
@@ -148,18 +153,24 @@ public class RouteInfoManager {
                 registerFirst = registerFirst || (null == oldAddr);
 
                 if (null != topicConfigWrapper
-                    && MixAll.MASTER_ID == brokerId) {
+                    && MixAll.MASTER_ID == brokerId) {//主节点
                     if (this.isBrokerTopicConfigChanged(brokerAddr, topicConfigWrapper.getDataVersion())
                         || registerFirst) {
                         ConcurrentMap<String, TopicConfig> tcTable =
                             topicConfigWrapper.getTopicConfigTable();
                         if (tcTable != null) {
                             for (Map.Entry<String, TopicConfig> entry : tcTable.entrySet()) {
+                                //第三步：如果Broker为主节点，并且Broker的topic配置信息发生变化或者是初次注册，
+                                // 则需要创建或更新topic路由元数据，并填充topicQueueTable，
+                                // 其实就是为默认主题自动注册路由信息，其中包含MixAll.DEFAULT_TOPIC的路由信息。
+                                // 当消息生产者发送主题时，如果该主题未创建，并且BrokerConfig的autoCreateTopicEnable为true，
+                                // 则返回MixAll.DEFAULT_TOPIC的路由信息
                                 this.createAndUpdateQueueData(brokerName, entry.getValue());
                             }
                         }
                     }
                 }
+                // brokerLiveTable的维护：更新BrokerLiveInfo，存储状态正常的Broker信息表，BrokeLiveInfo是执行路由删除操作的重要依据
                 //每次心跳，都会更新时间
                 BrokerLiveInfo prevBrokerLiveInfo = this.brokerLiveTable.put(brokerAddr,
                     new BrokerLiveInfo(
@@ -170,7 +181,9 @@ public class RouteInfoManager {
                 if (null == prevBrokerLiveInfo) {
                     log.info("new broker registered, {} HAServer: {}", brokerAddr, haServerAddr);
                 }
-
+                //第五步：注册Broker的过滤器Server地址列表，一个Broker上会关联多个FilterServer消息过滤服务器，
+                // 此部分内容将在第6章详细介绍。如果此Broker为从节点，则需要查找该Broker的主节点信息，并更新对应的masterAddr属性
+                // filterServerTable的维护
                 if (filterServerList != null) {
                     if (filterServerList.isEmpty()) {
                         this.filterServerTable.remove(brokerAddr);
@@ -178,7 +191,7 @@ public class RouteInfoManager {
                         this.filterServerTable.put(brokerAddr, filterServerList);
                     }
                 }
-
+                // 不是主节点
                 if (MixAll.MASTER_ID != brokerId) {
                     String masterAddr = brokerData.getBrokerAddrs().get(MixAll.MASTER_ID);
                     if (masterAddr != null) {
@@ -219,6 +232,12 @@ public class RouteInfoManager {
         }
     }
 
+    /**
+     * 问题1：如何判断这个topic发生变化？
+     *
+     * @param brokerName
+     * @param topicConfig
+     */
     private void createAndUpdateQueueData(final String brokerName, final TopicConfig topicConfig) {
         QueueData queueData = new QueueData();
         queueData.setBrokerName(brokerName);
@@ -239,6 +258,7 @@ public class RouteInfoManager {
             Iterator<QueueData> it = queueDataList.iterator();
             while (it.hasNext()) {
                 QueueData qd = it.next();
+                //相同Broker,不同队列
                 if (qd.getBrokerName().equals(brokerName)) {
                     if (qd.equals(queueData)) {
                         addNewOne = false;

@@ -140,3 +140,8 @@ private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;//topi
  */
 ```
 
+##### 路由注册
+
+###### 1、broker发送心跳包
+
+###### 2、nameserver处理心跳包
