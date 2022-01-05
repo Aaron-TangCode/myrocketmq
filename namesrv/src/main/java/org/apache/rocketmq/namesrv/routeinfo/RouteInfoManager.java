@@ -401,14 +401,22 @@ public class RouteInfoManager {
         }
     }
 
+    //查询并封装路由信息
+    // 第一步：调用RouterInfoManager的方法，从路由表topicQueueTable、brokerAddrTable、
+    // filterServerTable中分别填充TopicRouteData中的List<QueueData>、
+    // List<BrokerData>和filterServer地址表。
+    // 第二步：如果找到主题对应的路由信息并且该主题为顺序消息，则从NameServerKVConfig
+    // 中获取关于顺序消息相关的配置填充路由信息。如果找不到路由信息Code，则使用TOPIC_NOT_EXISTS，表示没有找到对应的路由
     public TopicRouteData pickupTopicRouteData(final String topic) {
         TopicRouteData topicRouteData = new TopicRouteData();
         boolean foundQueueData = false;
         boolean foundBrokerData = false;
         Set<String> brokerNameSet = new HashSet<String>();
+        //
         List<BrokerData> brokerDataList = new LinkedList<BrokerData>();
         topicRouteData.setBrokerDatas(brokerDataList);
 
+        //filterservertable信息
         HashMap<String, List<String>> filterServerMap = new HashMap<String, List<String>>();
         topicRouteData.setFilterServerTable(filterServerMap);
 
@@ -417,6 +425,7 @@ public class RouteInfoManager {
                 this.lock.readLock().lockInterruptibly();
                 List<QueueData> queueDataList = this.topicQueueTable.get(topic);
                 if (queueDataList != null) {
+                    //填充相关topicqueuetable信息
                     topicRouteData.setQueueDatas(queueDataList);
                     foundQueueData = true;
 
@@ -431,10 +440,12 @@ public class RouteInfoManager {
                         if (null != brokerData) {
                             BrokerData brokerDataClone = new BrokerData(brokerData.getCluster(), brokerData.getBrokerName(), (HashMap<Long, String>) brokerData
                                 .getBrokerAddrs().clone());
+                            //填充相关的Broker信息
                             brokerDataList.add(brokerDataClone);
                             foundBrokerData = true;
                             for (final String brokerAddr : brokerDataClone.getBrokerAddrs().values()) {
                                 List<String> filterServerList = this.filterServerTable.get(brokerAddr);
+                                //填充相关的filterservertable信息天
                                 filterServerMap.put(brokerAddr, filterServerList);
                             }
                         }

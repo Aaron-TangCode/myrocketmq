@@ -157,15 +157,16 @@ private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;//topi
 ##### 路由删除
 
 - 有2个路由删除的入口
-
   - 1、NameServer每10秒定时扫描brokerlivetable,检测上次心跳包与当前系统时间的时间戳，如果时间戳大于120s,则移除broker信息
   - 2、Broker在正常关系的情况下，会执行unregisterbroker命令。
-
 - 路由删除需要维护的信息：brokerlivetable,topicqueuetble,brokeraddrtable,filterservertable等信息
-
 - 详情：
-
   - RouteInfoManager#scanNotActiveBroker
   - RouteInfoManager#onChannelDestroy
 
-  
+##### 路由发现
+
+- 路由发现是非实时的
+- 当topic的路由发生变化后，nameserver是不会主动推送给客户端的。是客户端定时拉取topic的最新路由。
+- 详情：
+- 为DefaultRequestProcessor#getRouteInfoByTopic
