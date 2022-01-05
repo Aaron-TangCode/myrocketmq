@@ -170,6 +170,7 @@ public class BrokerOuterAPI {
     ) throws RemotingCommandException, MQBrokerException, RemotingConnectException, RemotingSendRequestException, RemotingTimeoutException,
         InterruptedException {
         //组装请求头和请求体
+        //RequestCode.REGISTER_BROKER 这个号码，其实是和nameserver交互的，如果nameserver看到是RequestCode.REGISTER_BROKER ，那么就会注册broker。相当于策略模式
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.REGISTER_BROKER, requestHeader);
         request.setBody(body);
         //这里是指不用等返回的请求，比较特殊
