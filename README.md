@@ -144,4 +144,28 @@ private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;//topi
 
 ###### 1、broker发送心跳包
 
+- 详情：BrokerController#start
+
 ###### 2、nameserver处理心跳包
+
+- 详情：RouteInfoManager#registerBroker
+
+  
+
+
+
+##### 路由删除
+
+- 有2个路由删除的入口
+
+  - 1、NameServer每10秒定时扫描brokerlivetable,检测上次心跳包与当前系统时间的时间戳，如果时间戳大于120s,则移除broker信息
+  - 2、Broker在正常关系的情况下，会执行unregisterbroker命令。
+
+- 路由删除需要维护的信息：brokerlivetable,topicqueuetble,brokeraddrtable,filterservertable等信息
+
+- 详情：
+
+  - RouteInfoManager#scanNotActiveBroker
+  - RouteInfoManager#onChannelDestroy
+
+  
