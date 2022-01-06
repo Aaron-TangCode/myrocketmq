@@ -67,29 +67,31 @@
 - 不追求强一致性，追求最终一致性
 - 功能：管理topic路由信息
 
-##### 架构设计图
+### 架构设计图
 
 ![image-20211229100953191](/Users/aaron/Library/Application Support/typora-user-images/image-20211229100953191.png)
 
 
 
-##### 如果某一台消息服务器宕机了，生产者如何在不重启服务的情况下感知呢？
+### 问题
+
+##### 1、如果某一台消息服务器宕机了，生产者如何在不重启服务的情况下感知呢？
 
 
 
-##### 消息生产者如何知道消息要发送到哪台服务器？
+##### 2、消息生产者如何知道消息要发送到哪台服务器？
 
 > Broker消息服务器在启动时会向NameServer注册，消息生产者在发送消息之前先从NameServer获取Broker服务器的地址列表，然后根据负载算法从列表中选择一台消息服务器发送消息
 
 
 
-##### NameServer和Broker的心跳
+##### 3、NameServer和Broker的心跳
 
 > NameServer和每台Broker服务器保持长连接，并间隔10s检测Broker是否存活。如果检测到Broker宕机，没心跳了，就会把broker从路由注册表移除。但是路由不会立马通知消息生产者，为什么要这样子设计呢？为了降低NameServer的实现复杂度。因此需要在消息发送端提供容错机制来保证消息发送的高可用。Broker发送心跳包时，包含自身创建的topic路由等信息
 
 
 
-##### NameServer根据什么来判定Broker宕机？
+##### 4、NameServer根据什么来判定Broker宕机？
 
 > 如果120s内，Broker都没心跳响应，就会被NameServer判定为宕机。
 >
@@ -97,25 +99,27 @@
 
 
 
-##### 消息客户端和NameServer是如何交互的？
+##### 5、消息客户端和NameServer是如何交互的？
 
 > 消息客户端会每隔30s，从NameServer中获取路由信息
 
 
 
-##### 如果保证NameServer的高可用？
+##### 6、如果保证NameServer的高可用？
 
 > 部署多台NameServer即可，NameServer之间互不通信，会造成短时间内，NameServer的数据不一致，但无关重要，无非就是造成消息短暂的发送不均衡。
 
 
 
-##### NameServer路由注册、故障剔除
+##### 7、NameServer路由注册、故障剔除
 
 > NameServer的主要作用是为了消息生产者和消息消费者提供topic的路由信息，以及管理broker节点，包括路由注册和路由发现、路由剔除
 
 ##### 小技巧
 
 - 在启动NameServer时，可以先使用./mqnameserver -c configFile -p 命令打印当前加载的配置属性
+
+### NameServer路由注册、故障剔除
 
 ##### NameServer-路由元信息
 
@@ -170,3 +174,79 @@ private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;//topi
 - 当topic的路由发生变化后，nameserver是不会主动推送给客户端的。是客户端定时拉取topic的最新路由。
 - 详情：
 - 为DefaultRequestProcessor#getRouteInfoByTopic
+
+
+
+**设计缺陷：**
+
+NameServer路由发现与删除机制就介绍到这里了，我们会发现这种设计存在这样一种情况：NameServer需要等Broker失效至少120s才能将该Broker从路由表中移除，如果在Broker故障期间，消息生产者根据主题获取到的路由信息包含已经宕机的Broker，就会导致消息发送失败。那么这种情况怎么办，岂不是消息发送不是高可用的？让我们带着这个疑问进入RocketMQ消息发送的学习。
+
+
+
+思考一下：其实路由发现、路由删除、路由注册，本质就是对路由元信息的增删改查。
+
+- 路由发现，就是对路由元信息的查询
+- 路由删除，就是对路由元信息的删除
+- 路由注册，就是对路由元信息的增加或修改
+
+## Producer
+
+### RocketMQ消息发送
+
+> RocketMQ有3种发送消息的方法：
+>
+> - 可靠同步发送
+> - 可靠异步发送
+> - 单向发送
+
+##### RocketMQ消息结构(重点)
+
+
+
+##### 消息生产者启动流转(重点)
+
+
+
+##### topic路由机制
+
+![image-20220105181207943](/Users/aaron/Library/Application Support/typora-user-images/image-20220105181207943.png)
+
+描述：RocketMQ提供了自动创建主题（topic）的机制，消息发送者向一个不存在的主题发送消息时，向NameServer查询该主题的路由信息会先返回空，如果开启了自动创建主题机制，会使用一个默认的主题名再次从NameServer查询路由信息，然后消息发送者会使用默认主题的路由信息进行负载均衡，但不会直接使用默认路由信息为新主题创建对应的路由信息。
+
+
+
+**注意**
+
+RocketMQ的路由信息，持久化在Broker中。NameServer的路由信息来自Broker的心跳包，且存储在内存中。
+
+
+
+##### 消息发送高可用设计
+
+RocketMQ为了保证发送消息的高可用，引入了2个特性：
+
+- 消息重试机制：顾名思义，就是消息发送失败后，会重新发送。默认重试2次。
+- 故障规避机制：当消息第一次发送失败后，如果第二次发送消息还是发送到刚刚失败的broker，大概率还是会失败的。为了保证发送的成功率，在重试时，会尽量避开刚刚接收消息失败的broker，选择其他broker进行发送消息，从而提高消息发送的成功率。
+
+![image-20220106102717742](/Users/aaron/Library/Application Support/typora-user-images/image-20220106102717742.png)
+
+> 补充：消息重试机制，并不是任何时候都会重试的。在以下这种情况，就不会重新发送消息。情况：生产者如果发送消息时，选择自定义队列负载算法，这个时候，重试机制将失效。
+
+##### 消息发送过程(重点)
+
+![image-20220106104051416](/Users/aaron/Library/Application Support/typora-user-images/image-20220106104051416.png)
+
+##### 批量消息发送(重点)
+
+
+
+### 问题
+
+RocketMQ消息发送需要考虑以下3个问题
+
+##### 1）消息队列如何进行负载？
+
+##### 2）消息发送如何实现高可用？
+
+##### 3）批量消息发送如何实现一致性？
+

@@ -68,7 +68,7 @@ public class TopicPublishInfo {
     }
 
     public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
-        if (lastBrokerName == null) {
+        if (lastBrokerName == null) {//第一次发送消息
             //随机选择一个
             return selectOneMessageQueue();
         } else {
