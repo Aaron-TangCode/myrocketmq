@@ -442,9 +442,11 @@ public class MQClientInstance {
         }
     }
 
+    //发送心跳给broker
     public void sendHeartbeatToAllBrokerWithLock() {
         if (this.lockHeartbeat.tryLock()) {
             try {
+                //发送心跳信息
                 this.sendHeartbeatToAllBroker();
                 this.uploadFilterClassSource();
             } catch (final Exception e) {
@@ -506,6 +508,7 @@ public class MQClientInstance {
     }
 
     private void sendHeartbeatToAllBroker() {
+        //准备心跳信息，看看有哪些心跳信息
         final HeartbeatData heartbeatData = this.prepareHeartbeatData();
         final boolean producerEmpty = heartbeatData.getProducerDataSet().isEmpty();
         final boolean consumerEmpty = heartbeatData.getConsumerDataSet().isEmpty();
@@ -532,6 +535,7 @@ public class MQClientInstance {
                             }
 
                             try {
+                                //发送心跳
                                 int version = this.mQClientAPIImpl.sendHearbeat(addr, heartbeatData, 3000);
                                 if (!this.brokerVersionTable.containsKey(brokerName)) {
                                     this.brokerVersionTable.put(brokerName, new HashMap<String, Integer>(4));
@@ -680,7 +684,7 @@ public class MQClientInstance {
     private HeartbeatData prepareHeartbeatData() {
         HeartbeatData heartbeatData = new HeartbeatData();
 
-        // clientID
+        // clientID= ip + 进程id
         heartbeatData.setClientID(this.clientId);
 
         // Consumer
@@ -688,12 +692,12 @@ public class MQClientInstance {
             MQConsumerInner impl = entry.getValue();
             if (impl != null) {
                 ConsumerData consumerData = new ConsumerData();
-                consumerData.setGroupName(impl.groupName());
-                consumerData.setConsumeType(impl.consumeType());
-                consumerData.setMessageModel(impl.messageModel());
-                consumerData.setConsumeFromWhere(impl.consumeFromWhere());
-                consumerData.getSubscriptionDataSet().addAll(impl.subscriptions());
-                consumerData.setUnitMode(impl.isUnitMode());
+                consumerData.setGroupName(impl.groupName());//消费组
+                consumerData.setConsumeType(impl.consumeType());//消费类型，pull模型和push模型
+                consumerData.setMessageModel(impl.messageModel());// 集群模式 和 广播模式
+                consumerData.setConsumeFromWhere(impl.consumeFromWhere()); // 从哪里开始消费
+                consumerData.getSubscriptionDataSet().addAll(impl.subscriptions());//消费数据集合
+                consumerData.setUnitMode(impl.isUnitMode());//TODO 这个是啥
 
                 heartbeatData.getConsumerDataSet().add(consumerData);
             }
@@ -704,7 +708,7 @@ public class MQClientInstance {
             MQProducerInner impl = entry.getValue();
             if (impl != null) {
                 ProducerData producerData = new ProducerData();
-                producerData.setGroupName(entry.getKey());
+                producerData.setGroupName(entry.getKey());//生产者组
 
                 heartbeatData.getProducerDataSet().add(producerData);
             }
