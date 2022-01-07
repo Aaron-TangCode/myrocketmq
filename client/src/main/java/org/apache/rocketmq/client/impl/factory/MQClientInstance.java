@@ -66,7 +66,9 @@ public class MQClientInstance {
     private final int instanceIndex;
     private final String clientId;
     private final long bootTimestamp = System.currentTimeMillis();
+    //生产者组 的缓存表
     private final ConcurrentMap<String/* group */, MQProducerInner> producerTable = new ConcurrentHashMap<String, MQProducerInner>();
+    //消费者组 的缓存表
     private final ConcurrentMap<String/* group */, MQConsumerInner> consumerTable = new ConcurrentHashMap<String, MQConsumerInner>();
     private final ConcurrentMap<String/* group */, MQAdminExtInner> adminExtTable = new ConcurrentHashMap<String, MQAdminExtInner>();
     private final NettyClientConfig nettyClientConfig;
@@ -196,6 +198,7 @@ public class MQClientInstance {
         return mqList;
     }
 
+    //消费者和生产者都是客户端，共用同一个启动方法
     public void start() throws MQClientException {
 
         synchronized (this) {

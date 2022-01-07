@@ -135,6 +135,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         log.info("register sendMessage Hook, {}", hook.hookName());
     }
 
+    //生产者启动流程
     public void start() throws MQClientException {
         this.start(true);
     }
@@ -146,12 +147,15 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
                 this.checkConfig();
 
+                // 如果生产组不是默认生产组，生产组的InstanceName为进程ID
                 if (!this.defaultMQProducer.getProducerGroup().equals(MixAll.CLIENT_INNER_PRODUCER_GROUP)) {
                     this.defaultMQProducer.changeInstanceNameToPID();
                 }
 
+                // 获取MQclientInstance
                 this.mQClientFactory = MQClientManager.getInstance().getOrCreateMQClientInstance(this.defaultMQProducer, rpcHook);
 
+                //注册生产者
                 boolean registerOK = mQClientFactory.registerProducer(this.defaultMQProducer.getProducerGroup(), this);
                 if (!registerOK) {
                     this.serviceState = ServiceState.CREATE_JUST;
@@ -160,8 +164,10 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                         null);
                 }
 
+                //增加一个生产者的主题频道
                 this.topicPublishInfoTable.put(this.defaultMQProducer.getCreateTopicKey(), new TopicPublishInfo());
 
+                //启动MQClientInstance,如果已经启动，本次启动不会执行
                 if (startFactory) {
                     mQClientFactory.start();
                 }
@@ -181,8 +187,10 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 break;
         }
 
+        //TODO HL 为什么生产者要发送心跳给broker
         this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
 
+        //定时任务
         this.timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {

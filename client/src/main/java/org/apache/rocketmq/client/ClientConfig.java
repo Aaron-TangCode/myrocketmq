@@ -16,10 +16,6 @@
  */
 package org.apache.rocketmq.client;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.message.MessageQueue;
@@ -28,6 +24,11 @@ import org.apache.rocketmq.common.utils.NameServerAddressUtils;
 import org.apache.rocketmq.remoting.common.RemotingUtil;
 import org.apache.rocketmq.remoting.netty.TlsSystemConfig;
 import org.apache.rocketmq.remoting.protocol.LanguageCode;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * Client Common configuration
@@ -62,11 +63,14 @@ public class ClientConfig {
 
     private LanguageCode language = LanguageCode.JAVA;
 
+    //clientid = ip + @ + 实例名字
     public String buildMQClientId() {
         StringBuilder sb = new StringBuilder();
         sb.append(this.getClientIP());
 
         sb.append("@");
+        //这里instanceName换成为进程ID,如果不换，同一台物理服务器部署2个生产者，那就会冲突的。
+        //但如果是同一个JVM中相同的clintId的消费者和生产者，启动时获取的MQClientInstance是同一个
         sb.append(this.getInstanceName());
         if (!UtilAll.isBlank(this.unitName)) {
             sb.append("@");

@@ -240,6 +240,10 @@ RocketMQ为了保证发送消息的高可用，引入了2个特性：
 
 
 
+##### 消息生产者启动流程
+
+详情：DefaultMQProducerImpl#start()
+
 ### 问题
 
 RocketMQ消息发送需要考虑以下3个问题
@@ -250,3 +254,4 @@ RocketMQ消息发送需要考虑以下3个问题
 
 ##### 3）批量消息发送如何实现一致性？
 
+4）同一个JVM中相同的ClientID的消费者和生产者启动时，获取的MQClientInstance实例是同一个
