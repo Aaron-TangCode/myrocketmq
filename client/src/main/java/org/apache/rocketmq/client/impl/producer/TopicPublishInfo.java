@@ -67,11 +67,17 @@ public class TopicPublishInfo {
         this.haveTopicRouterInfo = haveTopicRouterInfo;
     }
 
+    /**
+     * 其实lastBrokerName可以认为是上一次发送消息失败的broker
+     * 如果lastBrokerName 为 null，证明上一次发送消息是成功的
+     * @param lastBrokerName
+     * @return
+     */
     public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
-        if (lastBrokerName == null) {
+        if (lastBrokerName == null) {//第一次发送消息
             //随机选择一个
             return selectOneMessageQueue();
-        } else {
+        } else {//如果第一次发送失败，在重试时，会启动故障规避机制
             //负载均衡
             for (int i = 0; i < this.messageQueueList.size(); i++) {
                 int index = this.sendWhichQueue.getAndIncrement();
@@ -80,6 +86,7 @@ public class TopicPublishInfo {
                     pos = 0;
                 MessageQueue mq = this.messageQueueList.get(pos);
                 //如果当前broker和lastBrokerName不相等，就返回当前队列
+                // 故障规避机制
                 if (!mq.getBrokerName().equals(lastBrokerName)) {
                     return mq;
                 }

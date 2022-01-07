@@ -73,9 +73,16 @@ public class NamesrvController {
         );
         this.configuration.setStorePathFromConfig(this.namesrvConfig, "configStorePath");
     }
-    //初始化
+
+    /**
+     * 第二步
+     * 加载KV配置，先创建NettyServer网络处理对象，然后开启两个定时任务，在RocketMQ中，统一把这种定时任务成为心跳检测
+     * 定时任务1：NameServer每隔10s扫描一次Broker，移除处于未激活状态的Broker
+     * 定时任务2：NameServer每隔10min打印一次KV配置
+     * @return
+     */
     public boolean initialize() {
-        // 记载kv配置
+        // 加载kv配置
         this.kvConfigManager.load();
         //初始化网络服务器组件--> 初始化netty服务器
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
@@ -101,6 +108,7 @@ public class NamesrvController {
             }
         }, 1, 10, TimeUnit.MINUTES);
 
+        //todo HL 这里是做什么的？？？
         if (TlsSystemConfig.tlsMode != TlsMode.DISABLED) {
             // Register a listener to reload SslContext
             try {

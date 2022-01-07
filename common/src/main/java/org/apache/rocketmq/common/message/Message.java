@@ -17,19 +17,16 @@
 package org.apache.rocketmq.common.message;
 
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class Message implements Serializable {
     private static final long serialVersionUID = 8445773977080406428L;
 
-    private String topic;
-    private int flag;
-    private Map<String, String> properties;
-    private byte[] body;
-    private String transactionId;
+    private String topic;//主题
+    private int flag;//消息标记（RocketMQ不做处理） -> MessageSysFlag
+    private Map<String, String> properties;//扩展属性
+    private byte[] body;//消息体
+    private String transactionId;//事务Id
 
     public Message() {
     }
@@ -37,6 +34,13 @@ public class Message implements Serializable {
     public Message(String topic, byte[] body) {
         this(topic, "", "", 0, body, true);
     }
+
+    /**
+     *     核心构造方法
+     *     tags:标签
+     *     keys:消息索引建，用空格隔开，RocketMQ可以根据这些Key快速检索消息
+     *     waitStoreMsgOK:消息发送时是否等消息存储完成后再返回
+     */
 
     public Message(String topic, String tags, String keys, int flag, byte[] body, boolean waitStoreMsgOK) {
         this.topic = topic;
@@ -126,6 +130,7 @@ public class Message implements Serializable {
         return this.getProperty(MessageConst.PROPERTY_KEYS);
     }
 
+    //trim()去掉首尾空格
     public void setKeys(Collection<String> keys) {
         StringBuffer sb = new StringBuffer();
         for (String k : keys) {

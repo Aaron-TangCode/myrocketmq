@@ -28,6 +28,9 @@ import org.apache.rocketmq.remoting.exception.RemotingException;
 public interface MQAdmin {
     /**
      * Creates an topic
+     * key：目前无实际作用，可以与newTopic相同。
+     * newTopic：主题名称。
+     * queueNum：队列数量。
      *
      * @param key accesskey
      * @param newTopic topic name
@@ -38,7 +41,7 @@ public interface MQAdmin {
 
     /**
      * Creates an topic
-     *
+     * topicSysFlag：主题系统标签，默认为0。
      * @param key accesskey
      * @param newTopic topic name
      * @param queueNum topic's queue number

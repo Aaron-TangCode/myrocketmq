@@ -26,6 +26,8 @@ public class Producer {
     public static void main(String[] args) throws MQClientException, InterruptedException {
 
         DefaultMQProducer producer = new DefaultMQProducer("ProducerGroupName");
+        //延时规避机制，在发送消息重试时用
+        producer.setSendLatencyFaultEnable(true);
         producer.start();
 
         for (int i = 0; i < 128; i++)

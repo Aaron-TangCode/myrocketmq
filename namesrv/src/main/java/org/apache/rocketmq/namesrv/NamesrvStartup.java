@@ -57,7 +57,9 @@ public class NamesrvStartup {
         try {
             //createNamesrvController 核心类，类似于MVC的controller
             // 对Producer和consumer提供路由信息，对Broker提供注册
+            //第一步：解析配置文件，需要填充NamesrvConfig、NettyServerConfig消息
             NamesrvController controller = createNamesrvController(args);
+            //初始化
             start(controller);
             String tip = "The Name Server boot success. serializeType=" + RemotingCommand.getSerializeTypeConfigInThisServer();
             log.info(tip);
@@ -73,6 +75,8 @@ public class NamesrvStartup {
 
     /**
      * 创建监听、处理broker和处理客户端请求的组件
+     * 组装NameServer业务参数和组装NameServer网络参数
+     * 进而组装为NameServerController
      * @param args
      * @return
      * @throws IOException
@@ -89,8 +93,8 @@ public class NamesrvStartup {
             return null;
         }
         //核心配置
-        final NamesrvConfig namesrvConfig = new NamesrvConfig();
-        final NettyServerConfig nettyServerConfig = new NettyServerConfig();
+        final NamesrvConfig namesrvConfig = new NamesrvConfig();//NameServer业务参数
+        final NettyServerConfig nettyServerConfig = new NettyServerConfig();//NameServer网络参数
 
         nettyServerConfig.setListenPort(9876);
         // -c 文件的全路径名 读取里面的配置信息
@@ -109,16 +113,18 @@ public class NamesrvStartup {
                 in.close();
             }
         }
-
+        // 打印配置属性
         if (commandLine.hasOption('p')) {
             InternalLogger console = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_CONSOLE_NAME);
             MixAll.printObjectProperties(console, namesrvConfig);
             MixAll.printObjectProperties(console, nettyServerConfig);
-            System.exit(0);
+            System.exit(0);//这里会直接退出
         }
 
+        //把命令行中配置的属性，赋值给nameserver的业务配置属性
         MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), namesrvConfig);
 
+        //校验是否配置了ROCKETMQ_HOME
         if (null == namesrvConfig.getRocketmqHome()) {
             System.out.printf("Please set the %s variable in your environment to match the location of the RocketMQ installation%n", MixAll.ROCKETMQ_HOME_ENV);
             System.exit(-2);
@@ -149,17 +155,24 @@ public class NamesrvStartup {
         if (null == controller) {
             throw new IllegalArgumentException("NamesrvController is null");
         }
+        //第二步
         //初始化组件
         boolean initResult = controller.initialize();
+
         if (!initResult) {
             //初始化失败，关闭组件
             controller.shutdown();
             System.exit(-3);
         }
+        //第三步：注册JVM钩子函数并启动服务器，以便监听Broker、消息生产者的网络请求
         //JVM 关闭时候的钩子方法 --> JVM 关闭时，会回调这个方法
         Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, new Callable<Void>() {
             @Override
             public Void call() throws Exception {
+                String msg = "优雅永不过时，优雅的停机方式";
+                log.info(msg);
+                System.out.println(msg);
+                //如果代码中使用了线程池，一种优雅停机的方式就是注册一个JVM钩子函数，在JVM进程关闭之前，先将线程池关闭，及时释放资源
                 controller.shutdown();
                 return null;
             }
