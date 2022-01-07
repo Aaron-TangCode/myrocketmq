@@ -254,4 +254,6 @@ RocketMQ消息发送需要考虑以下3个问题
 
 ##### 3）批量消息发送如何实现一致性？
 
-4）同一个JVM中相同的ClientID的消费者和生产者启动时，获取的MQClientInstance实例是同一个
+4）同一个JVM中相同的ClientID的消费者和生产者启动时，获取的MQClientInstance实例是同一个，有什么优缺点
+
+5）在4的情况，集群消费会变成广播消费？
