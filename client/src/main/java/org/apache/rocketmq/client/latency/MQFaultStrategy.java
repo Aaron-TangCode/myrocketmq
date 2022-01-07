@@ -58,7 +58,8 @@ public class MQFaultStrategy {
     /**
      * 为保证发送消息的高可用，引入了2个特性：
      * 1、消息重试机制
-     * 2、故障规避机制
+     * 2、故障规避机制(默认开启)
+     * sendLatencyFaultEnable 默认为false,但默认故障规避机制是开启的，但如果sendLatencyFaultEnable为false,在重试发送消息时，才会启动故障规避机制
      *
      * 故障规避机制：
      * 第一次发送消息时失败，第二次发送时，如果发送消息给刚刚失败的broker，很大概率是会发送失败的，为了提高发送消息的成功率。
@@ -66,14 +67,12 @@ public class MQFaultStrategy {
      *
      * 如果没开启故障规避机制，即使有消息重试机制，也有可能会选择同一个Broker
      *
-     * TODO HL 问题：如何开启故障规避机制？
      * @param tpInfo
      * @param lastBrokerName
      * @return
      */
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
-        // 默认为false，代表不启用broker故障延迟
-        // 为了发送消息的高可用，引入的故障规避机制
+        // 为了发送消息的高可用，引入的延时规避机制，这个是重试的时候，才会触发的
         if (this.sendLatencyFaultEnable) {
             try {
                 //轮询，负载均衡。比如有3个queue,第一次发送到queue1,第二次发送到queue2
@@ -106,7 +105,7 @@ public class MQFaultStrategy {
                 log.error("Error occurred when selecting message queue", e);
             }
 
-            // 随机选择一个queue
+            // 随机选择一个queue  如果很不幸，所有Broker都被认为故障了，这个时候就通过队列，随机选一个broker，属于兜底策略
             return tpInfo.selectOneMessageQueue();
         }
         // 当sendLatencyFaultEnable为false时，选择的方法selectOneMessageQueue
