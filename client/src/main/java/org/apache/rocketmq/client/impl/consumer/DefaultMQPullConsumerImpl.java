@@ -593,6 +593,7 @@ public class DefaultMQPullConsumerImpl implements MQConsumerInner {
         }
     }
 
+    //客户端关闭
     public synchronized void shutdown() {
         switch (this.serviceState) {
             case CREATE_JUST:

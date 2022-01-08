@@ -267,6 +267,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         this.shutdown(true);
     }
 
+    //客户端关闭
     public void shutdown(final boolean shutdownFactory) {
         switch (this.serviceState) {
             case CREATE_JUST:
