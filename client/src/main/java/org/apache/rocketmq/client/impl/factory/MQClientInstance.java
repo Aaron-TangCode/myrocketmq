@@ -70,6 +70,7 @@ public class MQClientInstance {
     private final ConcurrentMap<String/* group */, MQProducerInner> producerTable = new ConcurrentHashMap<String, MQProducerInner>();
     //消费者组 的缓存表
     private final ConcurrentMap<String/* group */, MQConsumerInner> consumerTable = new ConcurrentHashMap<String, MQConsumerInner>();
+
     private final ConcurrentMap<String/* group */, MQAdminExtInner> adminExtTable = new ConcurrentHashMap<String, MQAdminExtInner>();
     private final NettyClientConfig nettyClientConfig;
     private final MQClientAPIImpl mQClientAPIImpl;
@@ -864,6 +865,7 @@ public class MQClientInstance {
         return true;
     }
 
+    //注销消费者者
     public void unregisterConsumer(final String group) {
         this.consumerTable.remove(group);
         this.unregisterClientWithLock(null, group);
@@ -892,11 +894,12 @@ public class MQClientInstance {
         while (it.hasNext()) {
             Entry<String, HashMap<Long, String>> entry = it.next();
             String brokerName = entry.getKey();
+            //brokerId,brokerAddress
             HashMap<Long, String> oneTable = entry.getValue();
 
             if (oneTable != null) {
                 for (Map.Entry<Long, String> entry1 : oneTable.entrySet()) {
-                    String addr = entry1.getValue();
+                    String addr = entry1.getValue();//brokerAddress
                     if (addr != null) {
                         try {
                             this.mQClientAPIImpl.unregisterClient(addr, this.clientId, producerGroup, consumerGroup, 3000);
@@ -914,6 +917,7 @@ public class MQClientInstance {
         }
     }
 
+    //注册生产者
     public boolean registerProducer(final String group, final DefaultMQProducerImpl producer) {
         if (null == group || null == producer) {
             return false;
@@ -928,6 +932,7 @@ public class MQClientInstance {
         return true;
     }
 
+    //注销生产者
     public void unregisterProducer(final String group) {
         this.producerTable.remove(group);
         this.unregisterClientWithLock(group, null);

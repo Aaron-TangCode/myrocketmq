@@ -942,7 +942,7 @@ public class MQClientAPIImpl {
         requestHeader.setProducerGroup(producerGroup);
         requestHeader.setConsumerGroup(consumerGroup);
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.UNREGISTER_CLIENT, requestHeader);
-
+        //发送注销命令给broker，告诉broker，客户端要注销了
         RemotingCommand response = this.remotingClient.invokeSync(addr, request, timeoutMillis);
         assert response != null;
         switch (response.getCode()) {
