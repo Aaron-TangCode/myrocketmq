@@ -28,9 +28,9 @@ import java.util.List;
 
 public class TopicRouteData extends RemotingSerializable {
     private String orderTopicConf;
-    private List<QueueData> queueDatas;
-    private List<BrokerData> brokerDatas;
-    private HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
+    private List<QueueData> queueDatas;//队列元数据
+    private List<BrokerData> brokerDatas;//分布式的broker元数据
+    private HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;//broker上过滤服务器的地址列表
 
     public TopicRouteData cloneTopicRouteData() {
         //从这里可以看出,根据topic来获取队列和broker、topicConf的配置

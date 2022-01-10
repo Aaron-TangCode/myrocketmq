@@ -669,11 +669,19 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             null).setResponseCode(ClientErrorCode.NOT_FOUND_TOPIC_EXCEPTION);
     }
 
+    /**
+     * tryToFindTopicPublishInfo是查找主题的路由信息的方法。
+     * 如果生产者中缓存了topic的路由信息，且该路由信息包含消息队列，则直接返回该路由信息。
+     * 如果没有缓存或没有包含消息队列，则向NameServer查询该topic的路由信息。
+     * 如果最终未找到路由信息，则抛出异常，表示无法找到主题相关路由信息异常
+     * @param topic
+     * @return
+     */
     private TopicPublishInfo tryToFindTopicPublishInfo(final String topic) {
         TopicPublishInfo topicPublishInfo = this.topicPublishInfoTable.get(topic);
         if (null == topicPublishInfo || !topicPublishInfo.ok()) {
             this.topicPublishInfoTable.putIfAbsent(topic, new TopicPublishInfo());
-            //从nameserver拉取数据，并更新本地缓存
+            //从nameserver拉取数据，并更新本地缓存   是更新消息生产者和维护路由缓存，
             this.mQClientFactory.updateTopicRouteInfoFromNameServer(topic);
             topicPublishInfo = this.topicPublishInfoTable.get(topic);
         }
@@ -1089,8 +1097,9 @@ public class DefaultMQProducerImpl implements MQProducerInner {
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
         long beginStartTime = System.currentTimeMillis();
         this.makeSureStateOK();
+        //校验message信息
         Validators.checkMessage(msg, this.defaultMQProducer);
-
+        //尝试获取主题的路由信息  从缓存 或 NameServer中获取
         TopicPublishInfo topicPublishInfo = this.tryToFindTopicPublishInfo(msg.getTopic());
         if (topicPublishInfo != null && topicPublishInfo.ok()) {
             MessageQueue mq = null;
