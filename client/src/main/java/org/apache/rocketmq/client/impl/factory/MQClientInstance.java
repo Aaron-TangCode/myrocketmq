@@ -509,6 +509,8 @@ public class MQClientInstance {
     }
 
     public boolean updateTopicRouteInfoFromNameServer(final String topic) {
+        //isDefault为false,则使用topic来查询。如果未查询到路由信息，表示路由信息未变化
+        //isDefault为true，则使用默认主题来查询，如果查询到路由信息，就替换消息生产者的队列数
         return updateTopicRouteInfoFromNameServer(topic, false, null);
     }
 
