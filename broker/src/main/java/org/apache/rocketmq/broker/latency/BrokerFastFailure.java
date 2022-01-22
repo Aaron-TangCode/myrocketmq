@@ -16,10 +16,6 @@
  */
 package org.apache.rocketmq.broker.latency;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.broker.BrokerController;
 import org.apache.rocketmq.common.ThreadFactoryImpl;
 import org.apache.rocketmq.common.constant.LoggerName;
@@ -27,6 +23,11 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.netty.RequestTask;
 import org.apache.rocketmq.remoting.protocol.RemotingSysResponseCode;
+
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class BrokerFastFailure {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
@@ -106,6 +107,11 @@ public class BrokerFastFailure {
                         break;
                     }
 
+                    //该方法的调用频率为每隔10s中执行一次，
+                    // 不过有一个执行前提条件就是Broker端要开启快速失败，默认为开启，
+                    // 可以通过参数brokerFastFailureEnable来设置。该方法的实现要点是每隔10s，
+                    // 检测一次，如果检测到PageCache繁忙，并且发送队列中还有排队的任务，则直接不再等待，
+                    // 直接抛出系统繁忙错误，使正在排队的线程快速失败，结束等待。
                     final long behind = System.currentTimeMillis() - rt.getCreateTimestamp();
                     if (behind >= maxWaitTimeMillsInQueue) {
                         if (blockingQueue.remove(runnable)) {

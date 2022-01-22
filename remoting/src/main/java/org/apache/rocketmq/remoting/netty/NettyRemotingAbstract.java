@@ -233,6 +233,15 @@ public abstract class NettyRemotingAbstract {
                 }
             };
 
+            //系统繁忙异常
+            /**
+             * 在不开启transientStorePoolEnable机制时，
+             * 如果Broker PageCache繁忙时则抛出上述错误，
+             * 判断PageCache繁忙的依据就是向PageCache追加消息时，
+             * 如果持有锁的时间超过1s，则会抛出该错误；
+             * 在开启transientStorePoolEnable机制时，
+             * 其判断依据是如果TransientStorePool中不存在可用的堆外内存时抛出该错误。
+             */
             if (pair.getObject1().rejectRequest()) {
                 final RemotingCommand response = RemotingCommand.createResponseCommand(RemotingSysResponseCode.SYSTEM_BUSY,
                     "[REJECTREQUEST]system busy, start flow control for a while");
@@ -244,7 +253,7 @@ public abstract class NettyRemotingAbstract {
             try {
                 final RequestTask requestTask = new RequestTask(run, ctx.channel(), cmd);
                 pair.getObject2().submit(requestTask);
-            } catch (RejectedExecutionException e) {
+            } catch (RejectedExecutionException e) {//拒绝任务执行异常
                 if ((System.currentTimeMillis() % 10000) == 0) {
                     log.warn(RemotingHelper.parseChannelRemoteAddr(ctx.channel())
                         + ", too many requests and system thread pool busy, RejectedExecutionException "
