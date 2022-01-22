@@ -914,6 +914,7 @@ public class MQClientAPIImpl {
         final HeartbeatData heartbeatData,
         final long timeoutMillis
     ) throws RemotingException, MQBrokerException, InterruptedException {
+        //心跳编号
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.HEART_BEAT, null);
         request.setLanguage(clientConfig.getLanguage());
         request.setBody(heartbeatData.encode());
