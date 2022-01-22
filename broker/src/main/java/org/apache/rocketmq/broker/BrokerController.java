@@ -517,6 +517,7 @@ public class BrokerController {
         }
     }
 
+    //注册处理器，其实就是把任务码和线程池绑定
     public void registerProcessor() {
         /**
          * SendMessageProcessor

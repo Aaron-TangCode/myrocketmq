@@ -236,6 +236,16 @@ RocketMQ为了保证发送消息的高可用，引入了2个特性：
 
 ![image-20220106104051416](/Users/aaron/Library/Application Support/typora-user-images/image-20220106104051416.png)
 
+上面的是消息发送的流程图
+
+
+
+下面是消息发送的细节流程图
+
+![image-20220108162740691](/Users/aaron/Library/Application Support/typora-user-images/image-20220108162740691.png)
+
+
+
 ##### 批量消息发送(重点)
 
 
@@ -243,6 +253,12 @@ RocketMQ为了保证发送消息的高可用，引入了2个特性：
 ##### 消息生产者启动流程
 
 详情：DefaultMQProducerImpl#start()
+
+
+
+##### 消息发送基本流程
+
+
 
 ### 问题
 
@@ -272,7 +288,21 @@ ClientId=IP+进程ID+nanotime+UnitName
 
 5）在4的情况，集群消费会变成广播消费？
 
-D：看4的缺点回答。
+D：看4的缺点回答
+
+
+
+6）ClientId会导致重复消费
+
+D：
+
+7）ClientId会导致消息堆积
+
+D：因为ClientId会导致Index相同，在rebalance阶段，会导致一部分队列中，一个队列被多个消费者消费，剩下的部分队列，没消费者。剩下的部分队列，因为消费没消费者进行消费，从而导致消息堆积。
+
+
+
+
 
 
 

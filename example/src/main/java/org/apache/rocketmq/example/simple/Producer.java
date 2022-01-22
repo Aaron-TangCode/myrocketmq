@@ -27,7 +27,8 @@ public class Producer {
 
         DefaultMQProducer producer = new DefaultMQProducer("ProducerGroupName");
         //延时规避机制，在发送消息重试时用
-        producer.setSendLatencyFaultEnable(true);
+//        producer.setSendLatencyFaultEnable(true);
+        producer.setNamesrvAddr("127.0.0.1:9876");
         producer.start();
 
         for (int i = 0; i < 128; i++)

@@ -590,6 +590,7 @@ public class MQClientInstance {
                     TopicRouteData topicRouteData;
                     //默认 且  生产者不为空
                     if (isDefault && defaultMQProducer != null) {
+                        // 查询默认主题
                         // 从nameserver获取broker\queue信息
                         topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(),
                             1000 * 3);
@@ -602,6 +603,7 @@ public class MQClientInstance {
                             }
                         }
                     } else {
+                        // 查询自定义主题
                         //根据topic去nameserver获取broker\queue信息
                         topicRouteData = this.mQClientAPIImpl.getTopicRouteInfoFromNameServer(topic, 1000 * 3);
                     }
@@ -611,7 +613,7 @@ public class MQClientInstance {
                         //校验本地路由信息和远程路由信息是否改变
                         boolean changed = topicRouteDataIsChange(old, topicRouteData);
                         if (!changed) {//没改变，就是相同
-                            //todo HL 没看懂，大概猜是：是否需要更新路由信息
+                            //需要判断，生产者和消费者中是否包含该主题
                             changed = this.isNeedUpdateTopicRouteInfo(topic);
                         } else {
                             log.info("the topic[{}] route info changed, old[{}] ,new[{}]", topic, old, topicRouteData);
@@ -624,9 +626,10 @@ public class MQClientInstance {
                                 this.brokerAddrTable.put(bd.getBrokerName(), bd.getBrokerAddrs());
                             }
 
-                            // 更新发布信息，其实就信更新对应的Map
+                            // 更新发布信息，其实就是更新对应的Map
                             // Update Pub info
                             {
+                                //将topicRouteData中的List<QueueData>转换成topicPublishInfo的List<MessageQueue>列表，具体实现在topicRouteData2TopicPublishInfo中
                                 TopicPublishInfo publishInfo = topicRouteData2TopicPublishInfo(topic, topicRouteData);
                                 publishInfo.setHaveTopicRouterInfo(true);
                                 Iterator<Entry<String, MQProducerInner>> it = this.producerTable.entrySet().iterator();
@@ -638,7 +641,7 @@ public class MQClientInstance {
                                     }
                                 }
                             }
-                            //更新订阅信息，其实就信更新对应的Map
+                            //更新订阅信息，其实就是更新对应的Map
                             // Update sub info
                             {
                                 Set<MessageQueue> subscribeInfo = topicRouteData2TopicSubscribeInfo(topic, topicRouteData);
@@ -783,7 +786,7 @@ public class MQClientInstance {
         Collections.sort(old.getBrokerDatas());
         Collections.sort(now.getQueueDatas());
         Collections.sort(now.getBrokerDatas());
-        return !old.equals(now);
+        return !old.equals(now);//重写过的equals方法
 
     }
 
@@ -795,6 +798,7 @@ public class MQClientInstance {
                 Entry<String, MQProducerInner> entry = it.next();
                 MQProducerInner impl = entry.getValue();
                 if (impl != null) {
+                    //如果找不到该topic，就返回true。反之，返回false
                     result = impl.isPublishTopicNeedUpdate(topic);
                 }
             }

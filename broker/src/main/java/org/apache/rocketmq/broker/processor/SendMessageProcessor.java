@@ -481,7 +481,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                     "service not available now. It may be caused by one of the following reasons: " +
                         "the broker's disk is full [" + diskUtil() + "], messages are put to the slave, message store has been shut down, etc.");
                 break;
-            case OS_PAGECACHE_BUSY:
+            case OS_PAGECACHE_BUSY://如果Page_Cache繁忙，就报异常：PC_SYNCHRONIZED
                 response.setCode(ResponseCode.SYSTEM_ERROR);
                 response.setRemark("[PC_SYNCHRONIZED]broker busy, start flow control for a while");
                 break;
