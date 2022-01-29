@@ -236,6 +236,16 @@ RocketMQ为了保证发送消息的高可用，引入了2个特性：
 
 ![image-20220106104051416](/Users/aaron/Library/Application Support/typora-user-images/image-20220106104051416.png)
 
+上面的是消息发送的流程图
+
+
+
+下面是消息发送的细节流程图
+
+![image-20220108162740691](/Users/aaron/Library/Application Support/typora-user-images/image-20220108162740691.png)
+
+
+
 ##### 批量消息发送(重点)
 
 
@@ -243,6 +253,12 @@ RocketMQ为了保证发送消息的高可用，引入了2个特性：
 ##### 消息生产者启动流程
 
 详情：DefaultMQProducerImpl#start()
+
+
+
+##### 消息发送基本流程
+
+
 
 ### 问题
 
@@ -254,6 +270,41 @@ RocketMQ消息发送需要考虑以下3个问题
 
 ##### 3）批量消息发送如何实现一致性？
 
-4）同一个JVM中相同的ClientID的消费者和生产者启动时，获取的MQClientInstance实例是同一个，有什么优缺点
+4）同一个JVM中相同的ClientID的消费者和生产者启动时，获取的MQClientInstance实例是同一个，有什么优缺点？
+
+优点：可以共享broker的信息，消息的偏移量，broker的延迟情况
+
+缺点：在容器化部署时，且采用Host模式下，多个消费者可能会存在clientId相同的情况，这样子会导致集群消费变为广播消费，导致消息重复消费。
+
+Docker在host模式下，IP地址是宿主机的IP地址，换句话说，只要是同一个的宿主机的容器，IP地址是相同的。
+
+补充文档：https://www.cnblogs.com/freeaihub/p/13197292.html
+
+ClientId=IP+进程ID+UnitName
+
+针对这种情况，RocketMQ在5.0.0版本，对此进行优化：添加nanotime 
+
+ClientId=IP+进程ID+nanotime+UnitName
 
 5）在4的情况，集群消费会变成广播消费？
+
+D：看4的缺点回答
+
+
+
+6）ClientId会导致重复消费
+
+D：
+
+7）ClientId会导致消息堆积
+
+D：因为ClientId会导致Index相同，在rebalance阶段，会导致一部分队列中，一个队列被多个消费者消费，剩下的部分队列，没消费者。剩下的部分队列，因为消费没消费者进行消费，从而导致消息堆积。
+
+
+
+
+
+
+
+
+

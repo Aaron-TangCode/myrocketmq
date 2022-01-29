@@ -98,7 +98,9 @@ public class ClientConfig {
 
     public void changeInstanceNameToPID() {
         if (this.instanceName.equals("DEFAULT")) {
+            // 在容器化部署环境下，clientId容易重复。在5.0.0版本中，增加了nanoTime
             this.instanceName = String.valueOf(UtilAll.getPid());
+//            this.instanceName = UtilAll.getPid() + "#" + System.nanoTime(); 5.0.0版本
             System.out.println("instanceName:"+instanceName);
         }
     }
