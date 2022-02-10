@@ -385,26 +385,36 @@ public class CommitLog {
         return new DispatchRequest(-1, false /* success */);
     }
 
+    /**
+     * 获取该消息在消息队列的物理偏移量。CommitLog中保存了当前所有消息队列的待写入物理偏移量
+     * commitlog的条目是不定长的，每一个条目的长度是前4个字节
+     * @param sysFlag
+     * @param bodyLength
+     * @param topicLength
+     * @param propertiesLength
+     * @return
+     */
     protected static int calMsgLength(int sysFlag, int bodyLength, int topicLength, int propertiesLength) {
         int bornhostLength = (sysFlag & MessageSysFlag.BORNHOST_V6_FLAG) == 0 ? 8 : 20;
         int storehostAddressLength = (sysFlag & MessageSysFlag.STOREHOSTADDRESS_V6_FLAG) == 0 ? 8 : 20;
-        final int msgLen = 4 //TOTALSIZE
-            + 4 //MAGICCODE
-            + 4 //BODYCRC
-            + 4 //QUEUEID
-            + 4 //FLAG
-            + 8 //QUEUEOFFSET
-            + 8 //PHYSICALOFFSET
-            + 4 //SYSFLAG
-            + 8 //BORNTIMESTAMP
-            + bornhostLength //BORNHOST
-            + 8 //STORETIMESTAMP
-            + storehostAddressLength //STOREHOSTADDRESS
-            + 4 //RECONSUMETIMES
-            + 8 //Prepared Transaction Offset
-            + 4 + (bodyLength > 0 ? bodyLength : 0) //BODY
-            + 1 + topicLength //TOPIC
-            + 2 + (propertiesLength > 0 ? propertiesLength : 0) //propertiesLength
+        //计算消息总长度
+        final int msgLen = 4 //TOTALSIZE 消息条目总长度
+            + 4 //MAGICCODE 魔数
+            + 4 //BODYCRC 消息体校验的CRC码
+            + 4 //QUEUEID 消息消费队列ID
+            + 4 //FLAG 消息标记
+            + 8 //QUEUEOFFSET 消息在消息队列的物理偏移量
+            + 8 //PHYSICALOFFSET 消息在commitLog中的物理偏移量
+            + 4 //SYSFLAG 消息系统标记，是否压缩，是否事务消息
+            + 8 //BORNTIMESTAMP 生产者调用消息发送API的时间
+            + bornhostLength //BORNHOST 消息发送者IP+端口号
+            + 8 //STORETIMESTAMP 消息存储时间
+            + storehostAddressLength //STOREHOSTADDRESS brokerip+端口号
+            + 4 //RECONSUMETIMES 消息重试次数
+            + 8 //Prepared Transaction Offset 事务消息的物理偏移量
+            + 4 + (bodyLength > 0 ? bodyLength : 0) //BODY 消息体长度
+            + 1 + topicLength //TOPIC 主题存储的长度
+            + 2 + (propertiesLength > 0 ? propertiesLength : 0) //propertiesLength 消息属性长度
             + 0;
         return msgLen;
     }
@@ -803,7 +813,7 @@ public class CommitLog {
         //真正的topic
         String topic = msg.getTopic();
 //        //真正的队列Id
-//        int queueId = msg.getQueueId();
+        int queueId = msg.getQueueId();
 
         final int tranType = MessageSysFlag.getTransactionValue(msg.getSysFlag());
         if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE
@@ -814,8 +824,8 @@ public class CommitLog {
                 if (msg.getDelayTimeLevel() > this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel()) {
                     msg.setDelayTimeLevel(this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel());
                 }
-                //真正的队列Id
-                int queueId;
+//                //真正的队列Id
+//                int queueId;
                 // 延迟topicSCHEDULE_TOPIC_XXXX
                 topic = TopicValidator.RMQ_SYS_SCHEDULE_TOPIC;
                 // 根据延迟级别，获取队列id
@@ -845,7 +855,7 @@ public class CommitLog {
         long elapsedTimeInLock = 0;
 
         MappedFile unlockMappedFile = null;
-        //获取最后一个mappedFile文件
+        //获取最后一个mappedFile文件,其实就是获取commitlog文件，因为mappedFile是映射文件
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
 
         putMessageLock.lock(); //spin or ReentrantLock ,depending on store config
@@ -858,6 +868,7 @@ public class CommitLog {
             msg.setStoreTimestamp(beginLockTimestamp);
 
             if (null == mappedFile || mappedFile.isFull()) {
+                //第一个commitlog文件-mappedFile
                 mappedFile = this.mappedFileQueue.getLastMappedFile(0); // Mark: NewFile may be cause noise
             }
             //创建mappedFile文件失败，返回
@@ -866,6 +877,7 @@ public class CommitLog {
                 beginTimeInLock = 0;
                 return new PutMessageResult(PutMessageStatus.CREATE_MAPEDFILE_FAILED, null);
             }
+            // 核心
             //发送消息，返回结果result
             result = mappedFile.appendMessage(msg, this.appendMessageCallback);
             switch (result.getStatus()) {
@@ -1568,6 +1580,7 @@ public class CommitLog {
             return msgStoreItemMemory;
         }
 
+        //追加消息到mappedfile中
         public AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer, final int maxBlank,
             final MessageExtBrokerInner msgInner) {
             // STORETIMESTAMP + STOREHOSTADDRESS + OFFSET <br>
@@ -1585,6 +1598,7 @@ public class CommitLog {
             this.resetByteBuffer(storeHostHolder, storeHostLength);
             String msgId;
             if ((sysflag & MessageSysFlag.STOREHOSTADDRESS_V6_FLAG) == 0) {
+                //创建消息唯一id=4个字节ip+4个字节端口号+8个字节消息偏移量
                 msgId = MessageDecoder.createMessageId(this.msgIdMemory, msgInner.getStoreHostBytes(storeHostHolder), wroteOffset);
             } else {
                 msgId = MessageDecoder.createMessageId(this.msgIdV6Memory, msgInner.getStoreHostBytes(storeHostHolder), wroteOffset);
@@ -1635,6 +1649,7 @@ public class CommitLog {
 
             final int bodyLength = msgInner.getBody() == null ? 0 : msgInner.getBody().length;
 
+            //获取消息在消息队列的物理偏移量
             final int msgLen = calMsgLength(msgInner.getSysFlag(), bodyLength, topicLength, propertiesLength);
 
             // Exceeds the maximum message
@@ -1705,6 +1720,7 @@ public class CommitLog {
 
             final long beginTimeMills = CommitLog.this.defaultMessageStore.now();
             // Write messages to the queue buffer
+            // 将消息内存写入到ByteBuffer中，然后创建AppendMessageResult
             byteBuffer.put(this.msgStoreItemMemory.array(), 0, msgLen);
 
             AppendMessageResult result = new AppendMessageResult(AppendMessageStatus.PUT_OK, wroteOffset, msgLen, msgId,
@@ -1717,6 +1733,7 @@ public class CommitLog {
                 case MessageSysFlag.TRANSACTION_NOT_TYPE:
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE:
                     // The next update ConsumeQueue information
+                    //更新消息队列的逻辑偏移量
                     CommitLog.this.topicQueueTable.put(key, ++queueOffset);
                     break;
                 default:

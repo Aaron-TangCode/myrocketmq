@@ -32,15 +32,20 @@ public class MappedFileQueue {
 
     private static final int DELETE_FILES_BATCH_MAX = 10;
 
+    //存储路径
     private final String storePath;
 
+    //内存映射文件大小
     private final int mappedFileSize;
 
     private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
 
+    //创建MappedFile服务类
     private final AllocateMappedFileService allocateMappedFileService;
 
+    //当前刷盘指针，指针之前的数据已经在磁盘中
     private long flushedWhere = 0;
+    //ByteBuffer的写指针，ByteBuffer写指针，大于或等于刷盘指针
     private long committedWhere = 0;
 
     private volatile long storeTimestamp = 0;
@@ -50,6 +55,8 @@ public class MappedFileQueue {
         this.storePath = storePath;
         this.mappedFileSize = mappedFileSize;
         this.allocateMappedFileService = allocateMappedFileService;
+        log.info("MappedFileQueue-内存映射文件存储路径:"+storePath);
+        System.out.println("MappedFileQueue-内存映射文件存储路径:"+storePath);
     }
 
     public void checkSelf() {
@@ -142,6 +149,7 @@ public class MappedFileQueue {
     }
 
     public boolean load() {
+        log.info("load-内存映射文件存储路径:"+storePath);
         File dir = new File(this.storePath);
         File[] files = dir.listFiles();
         if (files != null) {
@@ -202,6 +210,7 @@ public class MappedFileQueue {
         }
 
         if (createOffset != -1 && needCreate) {
+            log.info("getLastMappedFile-内存映射文件存储路径:"+storePath);
             String nextFilePath = this.storePath + File.separator + UtilAll.offset2FileName(createOffset);
             String nextNextFilePath = this.storePath + File.separator
                 + UtilAll.offset2FileName(createOffset + this.mappedFileSize);
@@ -567,6 +576,7 @@ public class MappedFileQueue {
     }
 
     public void destroy() {
+        log.info("destroy-内存映射文件存储路径:"+storePath);
         for (MappedFile mf : this.mappedFiles) {
             mf.destroy(1000 * 3);
         }

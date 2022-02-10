@@ -75,7 +75,7 @@ public class BrokerStartup {
                 tip += " and name server is " + controller.getBrokerConfig().getNamesrvAddr();
             }
 
-            log.info(tip);
+            log.info(tip+"内存");
             System.out.printf("%s%n", tip);
             return controller;
         } catch (Throwable e) {

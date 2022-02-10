@@ -200,7 +200,7 @@ public class MappedFile extends ReferenceResource {
     public AppendMessageResult appendMessagesInner(final MessageExt messageExt, final AppendMessageCallback cb) {
         assert messageExt != null;
         assert cb != null;
-
+        //获取当前的写指针
         int currentPos = this.wrotePosition.get();
 
         if (currentPos < this.fileSize) {
@@ -208,8 +208,10 @@ public class MappedFile extends ReferenceResource {
             byteBuffer.position(currentPos);
             AppendMessageResult result;
             if (messageExt instanceof MessageExtBrokerInner) {
+                // 核心
                 result = cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos, (MessageExtBrokerInner) messageExt);
             } else if (messageExt instanceof MessageExtBatch) {
+                // 批量消息
                 result = cb.doAppend(this.getFileFromOffset(), byteBuffer, this.fileSize - currentPos, (MessageExtBatch) messageExt);
             } else {
                 return new AppendMessageResult(AppendMessageStatus.UNKNOWN_ERROR);
