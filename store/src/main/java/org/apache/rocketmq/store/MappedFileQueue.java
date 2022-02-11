@@ -78,6 +78,12 @@ public class MappedFileQueue {
         }
     }
 
+    /**
+     * 从第一个mappedfile文件开始查找
+     * 找到第一个最后一次更新时间大于待查找时间戳的文件，如果都不存在，则返回最后一个mappedfile文件
+     * @param timestamp
+     * @return
+     */
     public MappedFile getMappedFileByTime(final long timestamp) {
         Object[] mfs = this.copyMappedFiles(0);
 
