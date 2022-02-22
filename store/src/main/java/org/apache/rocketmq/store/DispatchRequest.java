@@ -27,11 +27,11 @@ public class DispatchRequest {
     private final long storeTimestamp;
     private final long consumeQueueOffset;
     private final String keys;
-    private final boolean success;
+    private final boolean success;//是否成功解析到完整的消息
     private final String uniqKey;
 
     private final int sysFlag;
-    private final long preparedTransactionOffset;
+    private final long preparedTransactionOffset;//消息预处理事务偏移量
     private final Map<String, String> propertiesMap;
     private byte[] bitMap;
 

@@ -1190,6 +1190,7 @@ public class CommitLog {
         return -1;
     }
 
+    //返回commitlog目录的最小偏移量，如果第一个文件可用，就返回该文件的起始偏移量。否则就返回下一个文件的起始偏移量
     public long getMinOffset() {
         MappedFile mappedFile = this.mappedFileQueue.getFirstMappedFile();
         if (mappedFile != null) {
@@ -1203,10 +1204,15 @@ public class CommitLog {
         return -1;
     }
 
+    //根据偏移量和消息长度，查找消息
     public SelectMappedBufferResult getMessage(final long offset, final int size) {
+        //1G大小=1024*1024*1024
         int mappedFileSize = this.defaultMessageStore.getMessageStoreConfig().getMappedFileSizeCommitLog();
+        //通过偏移量找mappedFile文件
         MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset, offset == 0);
+
         if (mappedFile != null) {
+            //相对位置
             int pos = (int) (offset % mappedFileSize);
             return mappedFile.selectMappedBuffer(pos, size);
         }
@@ -1214,7 +1220,7 @@ public class CommitLog {
     }
 
     public long rollNextFile(final long offset) {
-        int mappedFileSize = this.defaultMessageStore.getMessageStoreConfig().getMappedFileSizeCommitLog();
+        int mappedFileSize = this.defaultMessageStore.getMessageStoreConfig().getMappedFileSizeCommitLog();//默认是1G,但可以通过配置文件修改
         return offset + mappedFileSize - offset % mappedFileSize;
     }
 
@@ -1415,7 +1421,7 @@ public class CommitLog {
     }
 
     public static class GroupCommitRequest {
-        private final long nextOffset;
+        private final long nextOffset;//刷盘点偏移量
         private CompletableFuture<PutMessageStatus> flushOKFuture = new CompletableFuture<>();
         private final long startTimestamp = System.currentTimeMillis();
         private long timeoutMillis = Long.MAX_VALUE;
@@ -1434,6 +1440,7 @@ public class CommitLog {
             return nextOffset;
         }
 
+        //唤醒消费者
         public void wakeupCustomer(final PutMessageStatus putMessageStatus) {
             this.flushOKFuture.complete(putMessageStatus);
         }
@@ -1489,7 +1496,7 @@ public class CommitLog {
                             // flushOK false 没刷 true 刷了
                             flushOK = CommitLog.this.mappedFileQueue.getFlushedWhere() >= req.getNextOffset();
                         }
-                        //flushOK：刷盘了，返回ok；没刷盘，返回超时
+                        //flushOK：刷盘了，返回ok；没刷盘，返回超时。。唤醒消费者
                         req.wakeupCustomer(flushOK ? PutMessageStatus.PUT_OK : PutMessageStatus.FLUSH_DISK_TIMEOUT);
                     }
                     //更新最后的刷盘时间
