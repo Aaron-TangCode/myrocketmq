@@ -94,6 +94,7 @@ public class MixAll {
         return wsAddr;
     }
 
+    //重试主题命名="%RETRY%"+消息组名称
     public static String getRetryTopic(final String consumerGroup) {
         return RETRY_GROUP_TOPIC_PREFIX + consumerGroup;
     }
