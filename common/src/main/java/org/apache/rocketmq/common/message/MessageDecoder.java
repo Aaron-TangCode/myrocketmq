@@ -16,19 +16,16 @@
  */
 package org.apache.rocketmq.common.message;
 
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.net.UnknownHostException;
+import org.apache.rocketmq.common.UtilAll;
+import org.apache.rocketmq.common.sysflag.MessageSysFlag;
+
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.rocketmq.common.UtilAll;
-import org.apache.rocketmq.common.sysflag.MessageSysFlag;
 
 public class MessageDecoder {
 //    public final static int MSG_ID_LENGTH = 8 + 8;
@@ -59,6 +56,14 @@ public class MessageDecoder {
 //        + 4 // 13 RECONSUMETIMES
 //        + 8; // 14 Prepared Transaction Offset
 
+    /**
+     * 创建全局唯一消息ID，消息ID有16字节
+     * 4个字节ip+4个字节端口号+8个字节消息偏移量
+     * @param input
+     * @param addr
+     * @param offset
+     * @return
+     */
     public static String createMessageId(final ByteBuffer input, final ByteBuffer addr, final long offset) {
         input.flip();
         int msgIDLength = addr.limit() == 8 ? 16 : 28;
@@ -67,6 +72,7 @@ public class MessageDecoder {
         input.put(addr);
         input.putLong(offset);
 
+        //字符转字符串
         return UtilAll.bytes2string(input.array());
     }
 

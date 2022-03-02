@@ -32,24 +32,31 @@ public class MappedFileQueue {
 
     private static final int DELETE_FILES_BATCH_MAX = 10;
 
+    //存储路径
     private final String storePath;
 
+    //内存映射文件大小
     private final int mappedFileSize;
 
     private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
 
+    //创建MappedFile服务类
     private final AllocateMappedFileService allocateMappedFileService;
 
+    //当前刷盘指针，指针之前的数据已经在磁盘中
     private long flushedWhere = 0;
+    //ByteBuffer的写指针，ByteBuffer写指针，大于或等于刷盘指针
     private long committedWhere = 0;
 
     private volatile long storeTimestamp = 0;
 
     public MappedFileQueue(final String storePath, int mappedFileSize,
-        AllocateMappedFileService allocateMappedFileService) {
+                           AllocateMappedFileService allocateMappedFileService) {
         this.storePath = storePath;
         this.mappedFileSize = mappedFileSize;
         this.allocateMappedFileService = allocateMappedFileService;
+        log.info("MappedFileQueue-内存映射文件存储路径:"+storePath);
+        System.out.println("MappedFileQueue-内存映射文件存储路径:"+storePath);
     }
 
     public void checkSelf() {
@@ -63,7 +70,7 @@ public class MappedFileQueue {
                 if (pre != null) {
                     if (cur.getFileFromOffset() - pre.getFileFromOffset() != this.mappedFileSize) {
                         LOG_ERROR.error("[BUG]The mappedFile queue's data is damaged, the adjacent mappedFile's offset don't match. pre file {}, cur file {}",
-                            pre.getFileName(), cur.getFileName());
+                                pre.getFileName(), cur.getFileName());
                     }
                 }
                 pre = cur;
@@ -71,6 +78,12 @@ public class MappedFileQueue {
         }
     }
 
+    /**
+     * 从第一个mappedfile文件开始查找
+     * 找到第一个最后一次更新时间大于待查找时间戳的文件，如果都不存在，则返回最后一个mappedfile文件
+     * @param timestamp
+     * @return
+     */
     public MappedFile getMappedFileByTime(final long timestamp) {
         Object[] mfs = this.copyMappedFiles(0);
 
@@ -142,16 +155,18 @@ public class MappedFileQueue {
     }
 
     public boolean load() {
+        log.info("load-内存映射文件存储路径:"+storePath);
         File dir = new File(this.storePath);
         File[] files = dir.listFiles();
         if (files != null) {
             // ascending order
+            // 按照文件名进行排序
             Arrays.sort(files);
             for (File file : files) {
 
                 if (file.length() != this.mappedFileSize) {
                     log.warn(file + "\t" + file.length()
-                        + " length not matched message store config value, please check it manually");
+                            + " length not matched message store config value, please check it manually");
                     return false;
                 }
 
@@ -188,6 +203,7 @@ public class MappedFileQueue {
         return 0;
     }
 
+    //创建MappedFile或者获取最后一个MappedFile
     public MappedFile getLastMappedFile(final long startOffset, boolean needCreate) {
         long createOffset = -1;
         MappedFile mappedFileLast = getLastMappedFile();
@@ -201,14 +217,15 @@ public class MappedFileQueue {
         }
 
         if (createOffset != -1 && needCreate) {
+            log.info("getLastMappedFile-内存映射文件存储路径:"+storePath);
             String nextFilePath = this.storePath + File.separator + UtilAll.offset2FileName(createOffset);
             String nextNextFilePath = this.storePath + File.separator
-                + UtilAll.offset2FileName(createOffset + this.mappedFileSize);
+                    + UtilAll.offset2FileName(createOffset + this.mappedFileSize);
             MappedFile mappedFile = null;
 
             if (this.allocateMappedFileService != null) {
                 mappedFile = this.allocateMappedFileService.putRequestAndReturnMappedFile(nextFilePath,
-                    nextNextFilePath, this.mappedFileSize);
+                        nextNextFilePath, this.mappedFileSize);
             } else {
                 try {
                     mappedFile = new MappedFile(nextFilePath, this.mappedFileSize);
@@ -234,6 +251,7 @@ public class MappedFileQueue {
         return getLastMappedFile(startOffset, true);
     }
 
+    //取最后一个mappedfile文件
     public MappedFile getLastMappedFile() {
         MappedFile mappedFileLast = null;
 
@@ -257,7 +275,7 @@ public class MappedFileQueue {
 
         if (mappedFileLast != null) {
             long lastOffset = mappedFileLast.getFileFromOffset() +
-                mappedFileLast.getWrotePosition();
+                    mappedFileLast.getWrotePosition();
             long diff = lastOffset - offset;
 
             final int maxDiff = this.mappedFileSize * 2;
@@ -296,6 +314,7 @@ public class MappedFileQueue {
         return -1;
     }
 
+    //最大偏移量
     public long getMaxOffset() {
         MappedFile mappedFile = getLastMappedFile();
         if (mappedFile != null) {
@@ -331,9 +350,9 @@ public class MappedFileQueue {
     }
 
     public int deleteExpiredFileByTime(final long expiredTime,
-        final int deleteFilesInterval,
-        final long intervalForcibly,
-        final boolean cleanImmediately) {
+                                       final int deleteFilesInterval,
+                                       final long intervalForcibly,
+                                       final boolean cleanImmediately) {
         Object[] mfs = this.copyMappedFiles(0);
 
         if (null == mfs)
@@ -395,7 +414,7 @@ public class MappedFileQueue {
                     destroy = maxOffsetInLogicQueue < offset;
                     if (destroy) {
                         log.info("physic min offset " + offset + ", logics in current mappedFile max offset "
-                            + maxOffsetInLogicQueue + ", delete it");
+                                + maxOffsetInLogicQueue + ", delete it");
                     }
                 } else if (!mappedFile.isAvailable()) { // Handle hanged file.
                     log.warn("Found a hanged consume queue file, attempting to delete it.");
@@ -464,12 +483,13 @@ public class MappedFileQueue {
             if (firstMappedFile != null && lastMappedFile != null) {
                 if (offset < firstMappedFile.getFileFromOffset() || offset >= lastMappedFile.getFileFromOffset() + this.mappedFileSize) {
                     LOG_ERROR.warn("Offset not matched. Request offset: {}, firstOffset: {}, lastOffset: {}, mappedFileSize: {}, mappedFiles count: {}",
-                        offset,
-                        firstMappedFile.getFileFromOffset(),
-                        lastMappedFile.getFileFromOffset() + this.mappedFileSize,
-                        this.mappedFileSize,
-                        this.mappedFiles.size());
+                            offset,
+                            firstMappedFile.getFileFromOffset(),
+                            lastMappedFile.getFileFromOffset() + this.mappedFileSize,
+                            this.mappedFileSize,
+                            this.mappedFiles.size());
                 } else {
+                    //定位算法
                     int index = (int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
                     MappedFile targetFile = null;
                     try {
@@ -478,18 +498,19 @@ public class MappedFileQueue {
                     }
 
                     if (targetFile != null && offset >= targetFile.getFileFromOffset()
-                        && offset < targetFile.getFileFromOffset() + this.mappedFileSize) {
+                            && offset < targetFile.getFileFromOffset() + this.mappedFileSize) {
                         return targetFile;
                     }
 
                     for (MappedFile tmpMappedFile : this.mappedFiles) {
                         if (offset >= tmpMappedFile.getFileFromOffset()
-                            && offset < tmpMappedFile.getFileFromOffset() + this.mappedFileSize) {
+                                && offset < tmpMappedFile.getFileFromOffset() + this.mappedFileSize) {
                             return tmpMappedFile;
                         }
                     }
                 }
 
+                //如果没找到mappedFile文件，就返回第一个MappedFile文件
                 if (returnFirstOnNotFound) {
                     return firstMappedFile;
                 }
@@ -565,6 +586,7 @@ public class MappedFileQueue {
     }
 
     public void destroy() {
+        log.info("destroy-内存映射文件存储路径:"+storePath);
         for (MappedFile mf : this.mappedFiles) {
             mf.destroy(1000 * 3);
         }

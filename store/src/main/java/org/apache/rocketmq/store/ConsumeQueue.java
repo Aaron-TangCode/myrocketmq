@@ -16,14 +16,15 @@
  */
 package org.apache.rocketmq.store;
 
-import java.io.File;
-import java.nio.ByteBuffer;
-import java.util.List;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
+
+import java.io.File;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class ConsumeQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
@@ -152,6 +153,11 @@ public class ConsumeQueue {
         }
     }
 
+    /**
+     * 根据时间戳找偏移量
+     * @param timestamp
+     * @return
+     */
     public long getOffsetInQueueByTime(final long timestamp) {
         MappedFile mappedFile = this.mappedFileQueue.getMappedFileByTime(timestamp);
         if (mappedFile != null) {
