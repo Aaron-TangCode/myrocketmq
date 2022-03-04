@@ -1305,6 +1305,7 @@ public class DefaultMessageStore implements MessageStore {
 
     private void addScheduleTask() {
 
+        //过期文件删除机制   过期时间为72H
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
@@ -1354,8 +1355,8 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     private void cleanFilesPeriodically() {
-        this.cleanCommitLogService.run();
-        this.cleanConsumeQueueService.run();
+        this.cleanCommitLogService.run();//清除commitlog文件
+        this.cleanConsumeQueueService.run();//清除consumeQueue文件
     }
 
     private void checkSelf() {
@@ -1615,6 +1616,7 @@ public class DefaultMessageStore implements MessageStore {
 
         public void run() {
             try {
+                //commitlog文件和consumequeue文件共用一套删除机制
                 this.deleteExpiredFiles();
 
                 this.redeleteHangedFile();
@@ -1625,14 +1627,27 @@ public class DefaultMessageStore implements MessageStore {
 
         private void deleteExpiredFiles() {
             int deleteCount = 0;
+            // 文件保留时间
             long fileReservedTime = DefaultMessageStore.this.getMessageStoreConfig().getFileReservedTime();
+            // 删除物理文件的时间间隔
             int deletePhysicFilesInterval = DefaultMessageStore.this.getMessageStoreConfig().getDeleteCommitLogFilesInterval();
+            /**
+             * 在清除过期文件时，如果该文件被其他线程占
+             * 用（引用次数大于0，比如读取消息），此时会阻止此次删除任务，同时在第一次试图删除该文件时记录当前时间戳，
+             * destroyMapedFileIntervalForcibly表示第一次拒绝删除之后能保留文件的最大时间，
+             * 在此时间内，同样可以被拒绝删除，超过该时间后，会将引用次数设置为负数，文件将被强制删除，
+             *
+             */
             int destroyMapedFileIntervalForcibly = DefaultMessageStore.this.getMessageStoreConfig().getDestroyMapedFileIntervalForcibly();
 
+            //指定删除文件的时间点，RocketMQ通过deleteWhen设置每天在固定时间执行一次删除过期文件操作，默认凌晨4点
             boolean timeup = this.isTimeToDelete();
+            //检查磁盘空间是否充足，如果磁盘空间不充足，则返回true，表示应该触发过期文件删除操作。
             boolean spacefull = this.isSpaceToDelete();
+            //预留手工触发机制，可以通过调用excuteDeleteFilesManualy方法手工触发删除过期文件的操作，目前RocketMQ暂未封装手工触发文件删除的命令
             boolean manualDelete = this.manualDeleteFileSeveralTimes > 0;
 
+            //三个条件，满足任意一个，都要删除commitlog
             if (timeup || spacefull || manualDelete) {
 
                 if (manualDelete)
